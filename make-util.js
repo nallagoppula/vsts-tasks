@@ -41,12 +41,12 @@ var ensureExists = function (checkPath) {
 
     if (!exists) {
         fail(checkPath + ' does not exist');
-    }    
+    }
 }
 exports.ensureExists = ensureExists;
 
 var pathExists = function (checkPath) {
-    return test('-d', checkPath) || test('-f', checkPath);  
+    return test('-d', checkPath) || test('-f', checkPath);
 }
 exports.pathExists = pathExists;
 
@@ -63,20 +63,20 @@ var buildNodeTask = function (taskPath, outDir) {
 }
 exports.buildNodeTask = buildNodeTask;
 
-var copyTaskResources = function(srcPath, destPath) {
+var copyTaskResources = function (srcPath, destPath) {
     // copy task resources
     var toCopy = makeOptions['taskResources'];
-    toCopy.forEach(function(item) {
+    toCopy.forEach(function (item) {
         var itemPath = path.join(srcPath, item);
 
         if (pathExists(itemPath)) {
-            cp('-R', itemPath , destPath);
+            cp('-R', itemPath, destPath);
         }
-    });    
+    });
 }
 exports.copyTaskResources = copyTaskResources;
 
-exports.run = function(cl, echo) {
+exports.run = function (cl, echo) {
     console.log();
     console.log('> ' + cl);
     var rc = 0;
@@ -93,7 +93,7 @@ exports.run = function(cl, echo) {
 }
 var run = exports.run;
 
-var ensureTool = function(name, versionArgs) {
+var ensureTool = function (name, versionArgs) {
     console.log(name + ' tool:');
     var toolPath = which(name);
     if (!toolPath) {
@@ -111,7 +111,7 @@ var downloadFile = function (url) {
         throw new Error('Parameter "url" must be set.');
     }
 
-    // short-circuit if already downloaded
+    // skip if already downloaded
     var scrubbedUrl = url.replace(/[/\:?]/g, '_');
     var targetPath = path.join(downloadPath, 'file', scrubbedUrl);
     var marker = targetPath + '.completed';
@@ -135,23 +135,17 @@ var downloadFile = function (url) {
     return targetPath;
 }
 
-var downloadArchive = function (url) {
-    // validate platform
-    var platform = os.platform();
-    if (platform != 'darwin' && platform != 'linux') {
-        throw new Error('Unexpected platform: ' + platform);
-    }
-
+var downloadArchive = function (url, omitExtensionCheck) {
     // validate parameters
     if (!url) {
         throw new Error('Parameter "url" must be set.');
     }
 
-    if (!url.match(/\.tar\.gz$/)) {
-        throw new Error('Expected .tar.gz');
+    if (!omitExtensionCheck && !url.match(/\.zip$/)) {
+        throw new Error('Expected .zip');
     }
 
-    // short-circuit if already downloaded and extracted
+    // skip if already downloaded and extracted
     var scrubbedUrl = url.replace(/[/\:?]/g, '_');
     var targetPath = path.join(downloadPath, 'archive', scrubbedUrl);
     var marker = targetPath + '.completed';
@@ -167,14 +161,8 @@ var downloadArchive = function (url) {
 
         // extract
         mkdir('-p', targetPath);
-        var cwd = process.cwd();
-        process.chdir(targetPath);
-        try {
-            run('tar -xzf "' + archivePath + '"');
-        }
-        finally {
-            process.chdir(cwd);
-        }
+        var zip = new admZip(archivePath);
+        zip.extractAllTo(targetPath);
 
         // write the completed marker
         fs.writeFileSync(marker, '');
